@@ -6,12 +6,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Танец света и тьмы</title>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <!-- v20260314_0642 -->
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<!-- Telegram SDK loaded conditionally -->
 <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=Raleway:ital,wght@0,300;0,400;0,600;1,300&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -971,7 +972,7 @@ const sb = {
       return null;
     }
     try {
-      const res = await fetch(SUPABASE_URL + '/rest/v1/' + table, {
+      const res = await fetch(SUPABASE_URL + '/rest/v1/' + table + '?apikey=' + SUPABASE_ANON_KEY, {
         method: 'POST',
         mode: 'cors',
         headers: {
@@ -1004,7 +1005,7 @@ const sb = {
     if (!SUPABASE_URL || SUPABASE_URL === 'YOUR_SUPABASE_URL') return;
     if (!id) { console.warn('⚠️ sb.update called without id for', table); return; }
     try {
-      const res = await fetch(SUPABASE_URL + '/rest/v1/' + table + '?id=eq.' + id, {
+      const res = await fetch(SUPABASE_URL + '/rest/v1/' + table + '?id=eq.' + id + '&apikey=' + SUPABASE_ANON_KEY, {
         method: 'PATCH',
         mode: 'cors',
         headers: {
@@ -1909,6 +1910,15 @@ function showLevelUp(completedLevel, nextLevel, playerName) {
 // ============================================================
 // TELEGRAM MINI APP INIT
 // ============================================================
+function loadTelegramSDK(callback) {
+  if (window.Telegram) { callback(); return; }
+  const s = document.createElement('script');
+  s.src = 'https://telegram.org/js/telegram-web-app.js';
+  s.onload = callback;
+  s.onerror = callback;
+  document.head.appendChild(s);
+}
+
 function initTelegram() {
   const tg = window.Telegram?.WebApp;
   if (!tg) {
@@ -1967,7 +1977,13 @@ function initTelegram() {
   return true;
 }
 
-const isTelegram = initTelegram();
+let isTelegram = false;
+// Load Telegram SDK only when running inside Telegram
+if (navigator.userAgent.includes('Telegram') || window.location.href.includes('tgWebAppData')) {
+  loadTelegramSDK(() => { isTelegram = initTelegram(); });
+} else {
+  isTelegram = initTelegram();
+}
 
 // ============================================================
 // SUPABASE DIAGNOSTIC — вызови sbTest() в консоли браузера
